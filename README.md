@@ -25,8 +25,8 @@ DSH 的标准插件安装机制是「组合包 → profile」：插件包在 `pa
 ```sh
 # 从本地 checkout 安装（在插件目录内执行）
 dsh plugin --profile demo add .
-# 从 GitHub 安装
-dsh plugin --profile demo add github:you/dsh-gomoku
+# 从 GitHub 安装（https://github.com/dsh-external/dsh-gomoku）
+dsh plugin --profile demo add github:dsh-external/dsh-gomoku
 # 从 tarball 或 npm 安装
 dsh plugin --profile demo add ./dsh-gomoku-0.1.0.tgz
 ```
