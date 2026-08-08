@@ -27,8 +27,9 @@ DSH 的标准插件安装机制是「组合包 → profile」：插件包在 `pa
 dsh plugin --profile demo add .
 # 从 GitHub 安装（https://github.com/dsh-external/dsh-gomoku）
 dsh plugin --profile demo add github:dsh-external/dsh-gomoku
-# 从 tarball 或 npm 安装
-dsh plugin --profile demo add ./dsh-gomoku-0.1.0.tgz
+# 从 tarball 安装（tarball 由 pnpm pack 在仓库内生成，scoped 包文件名形如 deepseek-ai-dsh-gomoku-<版本>.tgz）
+pnpm pack
+dsh plugin --profile demo add ./deepseek-ai-dsh-gomoku-0.0.1.tgz
 ```
 
 首次使用 `dsh plugin` 会初始化该 profile（`@deepseek-ai/dsh-base` 作为第一个组合包）；安装后先用 `--dump-config` 验证层，再启动：
