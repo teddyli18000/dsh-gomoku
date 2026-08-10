@@ -16,16 +16,16 @@
 - **弹窗关闭不中断对局**：棋局保存在浏览器端 store 中，关闭棋盘弹窗既不会重置棋局，也不会中断正在进行的 AI 思考，可以一边使用 Harness 主功能一边对弈。
 - **瞬时失败自动重试**：流式响应中断（连接断开、限流等瞬时传输故障）会在尝试预算内自动重试，不会直接让整步棋失败。
 
-## 在 DSH 中安装
+## 快速安装
 
-DSH 的标准插件安装机制是「组合包 → profile」：插件包在 `package.json` 中声明 `dsh.bundle` 并附带一个 patch 文件（插入插件行的 YAML 数组），用户用 `dsh plugin` 把它安装进任意 profile：
+DSH 的标准插件安装机制是「组合包 → profile」：插件包在 `package.json` 中声明 `dsh.bundle` 并附带 patch 文件（`cordis.patch.yml`），用户用 `dsh plugin` 把它安装进任意 profile：
 
 ```sh
 # 从本地 checkout 安装（在插件目录内执行）
 dsh plugin --profile demo add .
 # 从 GitHub 安装（https://github.com/dsh-external/dsh-gomoku）
 dsh plugin --profile demo add github:dsh-external/dsh-gomoku
-# 从 tarball 安装（tarball 由 pnpm pack 在仓库内生成，scoped 包文件名形如 deepseek-ai-dsh-gomoku-<版本>.tgz）
+# 从 tarball 安装（tarball 由 pnpm pack 在仓库内生成，文件名形如 deepseek-ai-dsh-gomoku-<版本>.tgz）
 pnpm pack
 dsh plugin --profile demo add ./deepseek-ai-dsh-gomoku-0.0.1.tgz
 ```
@@ -37,18 +37,9 @@ dsh --profile demo --dump-config   # 输出中应出现 gomoku 层
 dsh --profile demo
 ```
 
+> 从 GitHub 安装会拉取源码并在安装时构建：pnpm ≥10 默认拒绝执行构建脚本，需把报错的包键加入该 profile 的 `pnpm-workspace.yaml` 的 `allowBuilds` 后重新 `add`（tarball / npm 安装无需此步）。
+
 移除：`dsh plugin --profile demo remove @deepseek-ai/dsh-gomoku` 会同时移除依赖与对应层。
-
-打包前置条件与注意事项：
-
-- `package.json` 声明 `"dsh": { "bundle": { "patch": "./cordis.patch.yml" } }`；`cordis.patch.yml` 以 `insert` 形式列出插件行（按包名引用，而非相对源码路径）。没有该声明的包虽然可以 `add`，但只作为普通依赖安装，不激活任何层。
-- 从 GitHub 安装拉取的是源码而非构建产物：作者需提供 `prepare` 脚本在安装时构建出 `lib/`；pnpm ≥10 默认拒绝执行 git 依赖的构建脚本，用户需把 pnpm 打印的包键加入该 profile 的 `pnpm-workspace.yaml` 的 `allowBuilds` 后重新 `add`。分发 tarball（`pnpm pack`）或发布 npm 则无需任何构建授权。
-- 与同名行的关系：本包的 patch 只插入 `gomoku` 一行（浏览器界面随同一 id 加载，不存在独立的 `ui-gomoku` 行）。若同一 profile 中其他来源（如其他组合包的 patch）也插入同名行，重复 id 会导致加载失败——不要重复插入，按 id 覆盖即可。
-- 依赖服务：服务端需要 `httpServer`（web 宿主插件）与 `llm`（任意已注册的 LLM provider 路由，如 `@deepseek-ai/dsh-llm-deepseek`）；浏览器界面需要 `locale` 与 `slots`（`conversation.view` 洞）服务，并在 `package.json` 声明 `dshClient`（`platform: web` 与 inject 列表）才会被 web bundle 编入 `window.__DSH_BOOT__` 的模块表。
-
-完整机制（组合包与 profile 的 manifest、层加载顺序、GitHub 安装的构建授权）见官方教程 [打包与安装插件](../../../docs/user/develop/basic/publish.md)（[中文版](../../../docs/user/develop/basic/publish.zh.md)）与 [CLI 行为参考](../../../apps/cli/reference/README.md)。
-
-构建与生效：`pnpm run build` 一次性产出服务端库（`lib/index.js`、`lib/invariant.js`）、浏览器 bundle（`lib/client.js`）与类型声明（`lib/types/`）；修改源码后需重建并重启进程，浏览器端在 `dsh web --dev` + `pnpm run dev:web` 下可热更新。
 
 ## 路由
 
