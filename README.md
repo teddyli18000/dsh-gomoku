@@ -18,10 +18,6 @@
 
 ## 在 DSH 中安装
 
-本插件由两个半端组成：node 半端 `@deepseek-ai/dsh-gomoku`（本包，提供三个路由）与浏览器半端 `@deepseek-ai/dsh-client-ui-gomoku`（侧边栏入口与棋盘弹窗）。
-
-### 独立安装（标准 DSH 流程）
-
 DSH 的标准插件安装机制是「组合包 → profile」：插件包在 `package.json` 中声明 `dsh.bundle` 并附带一个 patch 文件（插入插件行的 YAML 数组），用户用 `dsh plugin` 把它安装进任意 profile：
 
 ```sh
@@ -47,22 +43,22 @@ dsh --profile demo
 
 - `package.json` 声明 `"dsh": { "bundle": { "patch": "./cordis.patch.yml" } }`；`cordis.patch.yml` 以 `insert` 形式列出插件行（按包名引用，而非相对源码路径）。没有该声明的包虽然可以 `add`，但只作为普通依赖安装，不激活任何层。
 - 从 GitHub 安装拉取的是源码而非构建产物：作者需提供 `prepare` 脚本在安装时构建出 `lib/`；pnpm ≥10 默认拒绝执行 git 依赖的构建脚本，用户需把 pnpm 打印的包键加入该 profile 的 `pnpm-workspace.yaml` 的 `allowBuilds` 后重新 `add`。分发 tarball（`pnpm pack`）或发布 npm 则无需任何构建授权。
-- 与内置行的关系：web profile 的 web-app 组合包已插入 `gomoku` 与 `ui-gomoku` 两行，独立组合包若与 web-app 共用同一 profile，不要重复插入同名行（重复 id 会导致加载失败），按 id 覆盖即可。
-- 依赖服务：node 半端需要 `httpServer`（web 宿主插件）与 `llm`（任意已注册的 LLM provider 路由，如 `@deepseek-ai/dsh-llm-deepseek`）；浏览器半端需要 `slots`（`sidebar.header` 洞）与 `locale` 服务，且其行需处于 web bundle 的 `dshClient` 名册中才会被加载进 `window.__DSH_BOOT__`。
+- 与同名行的关系：本包的 patch 只插入 `gomoku` 一行（浏览器界面随同一 id 加载，不存在独立的 `ui-gomoku` 行）。若同一 profile 中其他来源（如其他组合包的 patch）也插入同名行，重复 id 会导致加载失败——不要重复插入，按 id 覆盖即可。
+- 依赖服务：服务端需要 `httpServer`（web 宿主插件）与 `llm`（任意已注册的 LLM provider 路由，如 `@deepseek-ai/dsh-llm-deepseek`）；浏览器界面需要 `locale` 与 `slots`（`conversation.view` 洞）服务，并在 `package.json` 声明 `dshClient`（`platform: web` 与 inject 列表）才会被 web bundle 编入 `window.__DSH_BOOT__` 的模块表。
 
 完整机制（组合包与 profile 的 manifest、层加载顺序、GitHub 安装的构建授权）见官方教程 [打包与安装插件](../../../docs/user/develop/basic/publish.md)（[中文版](../../../docs/user/develop/basic/publish.zh.md)）与 [CLI 行为参考](../../../apps/cli/reference/README.md)。
 
-构建与生效：node 半端从构建产物 `lib/` 加载（`pnpm run build` 后生效），修改源码后需重建并重启进程；浏览器半端 bundle 输出到 `lib/client.js`，`dsh web --dev` + `pnpm run dev:web` 下可热更新。
+构建与生效：`pnpm run build` 一次性产出服务端库（`lib/index.js`、`lib/invariant.js`）、浏览器 bundle（`lib/client.js`）与类型声明（`lib/types/`）；修改源码后需重建并重启进程，浏览器端在 `dsh web --dev` + `pnpm run dev:web` 下可热更新。
 
 ## 路由
 
-- `GET /plugins/gomoku/prompt` — 默认系统提示词（规则、带 JSON 示范的术语、逐条附返回案例的基本战术、严格返回格式与示例），浏览器半端获取它用于展示与恢复。
+- `GET /plugins/gomoku/prompt` — 默认系统提示词（规则、带 JSON 示范的术语、逐条附返回案例的基本战术、严格返回格式与示例），浏览器界面获取它用于展示与恢复。
 - `GET /plugins/gomoku/models` — 模型目录（已注册的 provider 路由及其模型），供两侧的模型选择器使用。
 - `POST /plugins/gomoku/move` — 把棋盘构造成一次单发 LLM 请求（可携带思考档位与本次请求的超时/token 覆盖），解析并校验回复，返回所选交叉点与模型的推理文本。瞬时流式失败（连接中断、provider 限流等）会在尝试预算内自动重试后才放弃。
 
 ## 架构
 
-棋局本身（状态、回合、胜负判定）在浏览器半端；本插件只仲裁 AI 落子，因此非法回复在这里被拒绝，不会破坏浏览器端的棋盘。游戏采用自由式五子棋（无禁手）：黑方可以自由下双三、双四与长连——任意方向连续五子及以上即获胜。规则、返回格式、战术与示例都在默认系统提示词中；用户可以在界面中手改提示词，修改后的文本会原样作为系统提示词发送。
+棋局本身（状态、回合、胜负判定）在浏览器界面中；服务端只仲裁 AI 落子，因此非法回复在服务端被拒绝，不会破坏浏览器端的棋盘。游戏采用自由式五子棋（无禁手）：黑方可以自由下双三、双四与长连——任意方向连续五子及以上即获胜。规则、返回格式、战术与示例都在默认系统提示词中；用户可以在界面中手改提示词，修改后的文本会原样作为系统提示词发送。
 
 ## 配置
 
@@ -80,7 +76,7 @@ dsh --profile demo
 
 #### What the model sees
 
-每次 AI 落子都是发往所选 provider/model 路由的一次独立辅助请求。系统提示词要么是用户编辑后的文本，要么是下方的包默认文本；唯一的用户消息包含 15×15 棋盘文本（首行列号，随后 15 行每行以行号开头，每格一个 `B`/`W`/`·` 字符）、AI 执子方，以及（重试时）上一次非法回复与拒绝原因。落子请求还可携带思考档位（`off`/`high`/`max`）：仅当所选模型声明支持该档位时，node 半端才会把它作为请求的 reasoning effort 转发；不支持的档位回落到模型自身默认值，而不是让请求失败。可选的按请求 `moveTimeoutMs` 与 `maxMoveOutputTokens` 覆盖值只对本次请求替换配置默认值。回复中的推理块会随落子、和棋或错误结果以 `reasoning` 字段返回给浏览器。
+每次 AI 落子都是发往所选 provider/model 路由的一次独立辅助请求。系统提示词要么是用户编辑后的文本，要么是下方的包默认文本；唯一的用户消息包含 15×15 棋盘文本（首行列号，随后 15 行每行以行号开头，每格一个 `B`/`W`/`·` 字符）、AI 执子方，以及（重试时）上一次非法回复与拒绝原因。落子请求还可携带思考档位（`off`/`high`/`max`）：仅当所选模型声明支持该档位时，服务端才会把它作为请求的 reasoning effort 转发；不支持的档位回落到模型自身默认值，而不是让请求失败。可选的按请求 `moveTimeoutMs` 与 `maxMoveOutputTokens` 覆盖值只对本次请求替换配置默认值。回复中的推理块会随落子、和棋或错误结果以 `reasoning` 字段返回给浏览器。
 
 ##### 本字段的原文（Verbatim text for this field, when needed）
 
@@ -154,5 +150,5 @@ row 与 col 必须是 0 到 14 的整数，且目标交叉点必须为空；违�
 ## Known Limitations and Deferred Work
 
 - **无跨刷新持久化** — 棋局保存在浏览器端内存 store 中，关闭弹窗不会丢失，但页面刷新后会重新开始。
-- **无禁手规则以外的战术校验** — node 半端只校验合法性（边界与空位），不校验策略；模型按提示词自行遵守规则。
+- **无禁手规则以外的战术校验** — 服务端只校验合法性（边界与空位），不校验策略；模型按提示词自行遵守规则。
 - **无实时推理流** — `reasoning` 随落子请求的最终回复一起返回，浏览器在落子完成后才展示，而非逐 token 流式输出。
