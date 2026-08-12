@@ -34,11 +34,20 @@ globalThis.fetch = async (_url, options) => {
   const n = aiMoveIndex++
   return { ok: true, status: 200, json: async () => ({ move: { row: 8 + n, col: 8 + n }, reasoning: 'test' }) }
 }
-store.patchSettings({ whiteModel: { provider: 'prov-w', model: 'model-w' }, blackModel: { provider: 'prov-b', model: 'model-b' } })
+store.patchSettings({
+  whiteModel: { provider: 'prov-w', model: 'model-w' },
+  blackModel: { provider: 'prov-b', model: 'model-b' },
+  blackThinking: 'max',
+  whiteThinking: 'high',
+  blackPrompt: 'black-side prompt',
+  whitePrompt: 'white-side prompt',
+})
 store.newGame('black')
 store.placeStone(7, 7) // human black tengen → AI white moves next
 await settle()
 check('AI white requested with whiteModel', lastRequest?.provider === 'prov-w' && lastRequest?.model === 'model-w' && lastRequest?.side === 'white')
+check('AI white request uses whiteThinking', lastRequest?.thinking === 'high')
+check('AI white request uses whitePrompt', lastRequest?.system === 'white-side prompt')
 check('AI white move placed', store.getSnapshot().game.moveCount === 2)
 check('thinking cleared after AI move', store.getSnapshot().game.thinking === false)
 store.placeStone(6, 6) // human black's next move must be accepted
@@ -50,6 +59,8 @@ check('thinking cleared after the follow-up AI move', store.getSnapshot().game.m
 // --- AI black opening must land on tengen; a wrong reply retries then fails ---
 store.changeMode('white') // human plays white; AI opens as black
 check('AI black opening request uses blackModel', lastRequest?.provider === 'prov-b' && lastRequest?.model === 'model-b' && lastRequest?.side === 'black')
+check('AI black opening request uses blackThinking', lastRequest?.thinking === 'max')
+check('AI black opening request uses blackPrompt', lastRequest?.system === 'black-side prompt')
 await settle(120) // the stub replies (8,8) forever → MAX_AI_ATTEMPTS retries then failure
 const snapshot = store.getSnapshot()
 check('AI opening move rejected (tengen rule) after retries', snapshot.game.moveCount === 0)

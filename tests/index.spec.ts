@@ -185,7 +185,7 @@ describe('buildMoveUserMessage', () => {
 })
 
 describe('default system prompt', () => {
-  it('states terminology, blocking tactics with return cases, the strict format, and worked examples', () => {
+  it('states terminology, blocking tactics with return cases, the mandatory thinking flow, high-level few-shot games, the strict format, and worked examples', () => {
     expect(DEFAULT_SYSTEM_PROMPT).toContain('无禁手')
     expect(DEFAULT_SYSTEM_PROMPT).toContain('长连')
     expect(DEFAULT_SYSTEM_PROMPT).toContain('{"move": [row, col]}')
@@ -198,14 +198,24 @@ describe('default system prompt', () => {
     expect(DEFAULT_SYSTEM_PROMPT).toContain('活三')
     expect(DEFAULT_SYSTEM_PROMPT).toContain('活四')
     expect(DEFAULT_SYSTEM_PROMPT).toContain('冲四')
-    expect(DEFAULT_SYSTEM_PROMPT).toContain('取胜优先')
+    expect(DEFAULT_SYSTEM_PROMPT).toContain('眠三')
     expect(DEFAULT_SYSTEM_PROMPT).toContain('双活三')
+    expect(DEFAULT_SYSTEM_PROMPT).toContain('四三')
+    expect(DEFAULT_SYSTEM_PROMPT).toContain('防守要点')
+    expect(DEFAULT_SYSTEM_PROMPT).toContain('取胜优先')
+    expect(DEFAULT_SYSTEM_PROMPT).toContain('落子前的思考流程')
+    expect(DEFAULT_SYSTEM_PROMPT).toContain('穷举己方')
+    expect(DEFAULT_SYSTEM_PROMPT).toContain('候选评估')
+    expect(DEFAULT_SYSTEM_PROMPT).toContain('综合判断')
+    expect(DEFAULT_SYSTEM_PROMPT).toContain('高水平对弈示例')
     expect(DEFAULT_SYSTEM_PROMPT).toContain('{"move": [6, 10]}')
     expect(DEFAULT_SYSTEM_PROMPT).toContain('{"move": [4, 8]}')
     expect(DEFAULT_SYSTEM_PROMPT).toContain('{"move": [3, 7]}')
     expect(DEFAULT_SYSTEM_PROMPT).toContain('{"move": [7, 2]}')
     expect(DEFAULT_SYSTEM_PROMPT).toContain('{"move": [5, 4]}')
     expect(DEFAULT_SYSTEM_PROMPT).toContain('{"move": [5, 5]}')
+    expect(DEFAULT_SYSTEM_PROMPT).toContain('{"move": [5, 8]}')
+    expect(DEFAULT_SYSTEM_PROMPT).toContain('{"move": [4, 4]}')
   })
 })
 

@@ -67,14 +67,26 @@ export interface SettingsState {
   blackModel: SideModel
   /** The model used when the AI plays white (black-side human games, both-mode). */
   whiteModel: SideModel
-  thinking: Thinking
+  /** The AI thinking level when the AI plays black. */
+  blackThinking: Thinking
+  /** The AI thinking level when the AI plays white. */
+  whiteThinking: Thinking
+  /** Fixed per-move deadline; not user-adjustable (see DEFAULT_MOVE_TIMEOUT_MS). */
   moveTimeoutMs: number
+  /** Fixed per-move output-token cap; not user-adjustable (see DEFAULT_MAX_MOVE_OUTPUT_TOKENS). */
   maxMoveOutputTokens: number
-  /** Custom system prompt; undefined uses the node half's default. */
-  customPrompt: string | undefined
+  /** Black's custom system prompt; undefined uses the node half's default. */
+  blackPrompt: string | undefined
+  /** White's custom system prompt; undefined uses the node half's default. */
+  whitePrompt: string | undefined
   groups: ModelGroup[]
   modelsError: string | undefined
 }
+
+/** The fixed per-move deadline in milliseconds (not user-adjustable). */
+export const DEFAULT_MOVE_TIMEOUT_MS = 300_000
+/** The fixed per-move output-token cap (not user-adjustable). */
+export const DEFAULT_MAX_MOVE_OUTPUT_TOKENS = 32_000
 
 /** The whole store snapshot the view subscribes to. */
 export interface Snapshot {
@@ -107,10 +119,12 @@ function freshSettings(): SettingsState {
     mode: 'black',
     blackModel: { provider: undefined, model: undefined },
     whiteModel: { provider: undefined, model: undefined },
-    thinking: 'off',
-    moveTimeoutMs: 30_000,
-    maxMoveOutputTokens: 8192,
-    customPrompt: undefined,
+    blackThinking: 'off',
+    whiteThinking: 'off',
+    moveTimeoutMs: DEFAULT_MOVE_TIMEOUT_MS,
+    maxMoveOutputTokens: DEFAULT_MAX_MOVE_OUTPUT_TOKENS,
+    blackPrompt: undefined,
+    whitePrompt: undefined,
     groups: [],
     modelsError: undefined,
   }
@@ -278,6 +292,16 @@ function sideModelOf(settings: SettingsState, turn: Cell): SideModel {
   return turn === BLACK ? settings.blackModel : settings.whiteModel
 }
 
+/** The side thinking level for one turn color. */
+function sideThinkingOf(settings: SettingsState, turn: Cell): Thinking {
+  return turn === BLACK ? settings.blackThinking : settings.whiteThinking
+}
+
+/** The side custom system prompt for one turn color (undefined = node default). */
+function sidePromptOf(settings: SettingsState, turn: Cell): string | undefined {
+  return turn === BLACK ? settings.blackPrompt : settings.whitePrompt
+}
+
 /**
  * How long past the node half's own deadline a request may stay silent
  * before the client declares the thinking interrupted (the node half answers
@@ -316,15 +340,16 @@ function scheduleAi(attempt: number = 1): void {
   const watchdog = window.setTimeout(() => {
     if (gen === generation && seq === requestSeq) controller.abort()
   }, settings.moveTimeoutMs + WATCHDOG_MARGIN_MS)
+  const system = sidePromptOf(settings, turn)
   requestAiMove({
     provider: model.provider,
     model: model.model,
     side: sideOf(turn),
     board: [...game.board],
-    thinking: settings.thinking,
+    thinking: sideThinkingOf(settings, turn),
     moveTimeoutMs: settings.moveTimeoutMs,
     maxMoveOutputTokens: settings.maxMoveOutputTokens,
-    ...(settings.customPrompt !== undefined ? { system: settings.customPrompt } : {}),
+    ...(system !== undefined ? { system } : {}),
   }, controller.signal)
     .then((reply: MoveResponse) => {
       window.clearTimeout(watchdog)

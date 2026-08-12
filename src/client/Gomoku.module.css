@@ -1,5 +1,5 @@
-/* Gomoku view tab styles: board column + right settings panel, grid lines
-   through intersections, and the composer-seat hide rule. */
+/* Gomoku view tab styles: per-side AI panels flanking the board column,
+   grid lines through intersections, and the composer-seat hide rule. */
 
 .view {
   height: 100%;
@@ -13,7 +13,7 @@
   flex-direction: row;
   align-items: flex-start;
   gap: 20px;
-  max-width: 1000px;
+  max-width: 1240px;
   margin: 0 auto;
 }
 
@@ -32,6 +32,11 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+.panelTitle {
+  font-size: 13px;
+  font-weight: 600;
 }
 
 .toolbar {
@@ -79,10 +84,6 @@
   color: inherit;
   width: 100%;
   box-sizing: border-box;
-}
-
-.spacer {
-  flex: 1;
 }
 
 .ghost {
@@ -144,6 +145,17 @@
   opacity: 0.6;
   min-height: 14px;
   text-align: center;
+}
+
+/* Below-the-board controls: the mode selector and the new-game button. */
+.bottomBar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  width: 100%;
+  margin-top: 4px;
 }
 
 /* 15×15 intersections: one line per row/column center, so the outer lines
@@ -218,12 +230,6 @@
   pointer-events: none;
 }
 
-.settingsRow {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
 .field {
   display: flex;
   flex-direction: column;
@@ -250,6 +256,11 @@
   border: 1px solid rgba(128, 128, 128, 0.3);
   border-radius: 6px;
   padding: 8px;
+}
+
+.promptTitle {
+  font-size: 12px;
+  font-weight: 600;
 }
 
 .promptTextarea {
