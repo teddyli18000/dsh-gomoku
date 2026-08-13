@@ -30,8 +30,8 @@ DSH 的标准插件安装机制是「组合包 → profile」：插件包在 `pa
 ```sh
 # 从本地 checkout 安装（在插件目录内执行）
 dsh plugin --profile demo add .
-# 从 GitHub 安装（https://github.com/dsh-external/dsh-gomoku）
-dsh plugin --profile demo add github:dsh-external/dsh-gomoku
+# 从 GitHub 安装（https://github.com/omdsh-dev/dsh-gomoku）
+dsh plugin --profile demo add github:omdsh-dev/dsh-gomoku
 # 从 tarball 安装（tarball 由 pnpm pack 在仓库内生成，文件名形如 deepseek-ai-dsh-gomoku-<版本>.tgz）
 pnpm pack
 dsh plugin --profile demo add ./deepseek-ai-dsh-gomoku-0.0.1.tgz
@@ -43,8 +43,6 @@ dsh plugin --profile demo add ./deepseek-ai-dsh-gomoku-0.0.1.tgz
 dsh --profile demo --dump-config   # 输出中应出现 gomoku 层
 dsh --profile demo
 ```
-
-> 从 GitHub 安装会拉取源码并在安装时构建：pnpm ≥10 默认拒绝执行构建脚本，需把报错的包键加入该 profile 的 `pnpm-workspace.yaml` 的 `allowBuilds` 后重新 `add`（tarball / npm 安装无需此步）。
 
 移除：`dsh plugin --profile demo remove @deepseek-ai/dsh-gomoku` 会同时移除依赖与对应层。
 

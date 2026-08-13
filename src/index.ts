@@ -29,11 +29,11 @@
  */
 
 import type { IncomingMessage } from 'node:http'
-import type { Context } from 'cordis'
+import type { Context } from '@deepseek-ai/cordis'
 import z from 'schemastery'
 import { BlockAssembler, ReasoningEffortId, createUserMessage } from '@deepseek-ai/dsh-llm'
 import type { ContentBlock, FinishReason, GenerateOptions, LlmModelInfo, Message } from '@deepseek-ai/dsh-llm'
-// Type-only: the ctx.httpServer merge (the webserver host plugin).
+// Type-only: the ctx.webServer merge (the webserver host plugin).
 import type {} from '@deepseek-ai/dsh-host-webserver'
 import type {} from '@deepseek-ai/dsh-llm'
 
@@ -41,7 +41,7 @@ import type {} from '@deepseek-ai/dsh-llm'
 export const name = 'gomoku'
 
 /** Services required before the board routes can mount. */
-export const inject = ['httpServer', 'llm']
+export const inject = ['webServer', 'llm']
 
 /** Board edge length in intersections (standard freestyle gomoku board). */
 export const BOARD_SIZE = 15
@@ -524,7 +524,7 @@ export function apply(ctx: Context, config: Config): void {
   }
 
   ctx.effect(() => {
-    const dispose = ctx.httpServer.register({
+    const dispose = ctx.webServer.register({
       kind: 'prefix',
       path: GOMOKU_PATH,
       handler: async (req, res) => {
