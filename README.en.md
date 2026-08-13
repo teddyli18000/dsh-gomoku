@@ -37,6 +37,8 @@ pnpm pack
 dsh plugin --profile demo add ./deepseek-ai-dsh-gomoku-0.0.1.tgz
 ```
 
+All three installs consume the committed prebuilt artifacts (`lib/`) — no build step runs at install time, so git installs need no `allowBuilds` entries in the profile's `pnpm-workspace.yaml` either. Requires dsh ≥ 0.1.0-rc.6: the plugin uses the `webServer` service from `@deepseek-ai/dsh-host-webserver`, which older dsh releases lack (the row would stay pending forever). pnpm peer-dependency warnings are safe to ignore — the host dsh provides those services at runtime.
+
 The first `dsh plugin` run initializes the profile (`@deepseek-ai/dsh-base` as the first bundle); after installing, verify the layers with `--dump-config` before starting:
 
 ```sh

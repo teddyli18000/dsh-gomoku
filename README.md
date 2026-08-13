@@ -37,6 +37,8 @@ pnpm pack
 dsh plugin --profile demo add ./deepseek-ai-dsh-gomoku-0.0.1.tgz
 ```
 
+以上方式都直接使用仓库内提交的预构建产物（`lib/`），安装时不需要执行构建脚本——从 git 安装也无需在 profile 的 `pnpm-workspace.yaml` 里配置 `allowBuilds`。要求 dsh ≥ 0.1.0-rc.6：插件使用 `@deepseek-ai/dsh-host-webserver` 的 `webServer` 服务，更早版本的 dsh 没有该服务，插件行会一直 pending。若 pnpm 提示 peer 依赖警告，可忽略：所需服务由宿主 dsh 在运行时提供。
+
 首次使用 `dsh plugin` 会初始化该 profile（`@deepseek-ai/dsh-base` 作为第一个组合包）；安装后先用 `--dump-config` 验证层，再启动：
 
 ```sh
