@@ -1,3 +1,5 @@
+<p align="center"><a href="./README.en.md">English</a> · <b>简体中文</b></p>
+
 # 五子棋（Gomoku）· 在 DSH 里和 AI 杀一盘
 
 ![dsh-gomoku](assets/screenshot.png)
