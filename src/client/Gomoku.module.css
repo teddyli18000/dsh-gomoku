@@ -1,11 +1,43 @@
 /* Gomoku view tab styles: per-side AI panels flanking the board column,
-   grid lines through intersections, and the composer-seat hide rule. */
+   grid lines through intersections, and the composer-seat hide rule.
+   Chrome rides the host's --dsw-alias-* tokens (light/dark adaptive) with
+   local fallbacks; the board itself is a fixed warm wood surface. */
 
 .view {
   height: 100%;
   overflow-y: auto;
   padding: 16px;
   box-sizing: border-box;
+
+  /* Local design tokens: chrome (host-derived) + board (fixed, physical). */
+  --border: var(--dsw-alias-border-l2, rgba(128, 128, 128, 0.3));
+  --border-soft: var(--dsw-alias-border-l1, rgba(128, 128, 128, 0.16));
+  --panel-bg: var(--dsw-alias-bg-module-platform, rgba(128, 128, 128, 0.06));
+  --well-bg: var(--dsw-alias-bg-layer-1, rgba(128, 128, 128, 0.07));
+  --interactive-hover: var(--dsw-alias-interactive-bg-hover, rgba(128, 128, 128, 0.12));
+  --interactive-active: var(--dsw-alias-interactive-bg-active, rgba(128, 128, 128, 0.2));
+  --label-primary: var(--dsw-alias-label-primary, inherit);
+  --label-secondary: var(--dsw-alias-label-secondary, rgba(128, 128, 128, 0.78));
+  --label-tertiary: var(--dsw-alias-label-tertiary, rgba(128, 128, 128, 0.58));
+  --error: var(--dsw-alias-state-error-primary, #e05252);
+  --success: var(--dsw-alias-state-success-primary, #4caf50);
+
+  /* Board: warm amber wood family (fixed, physical object). */
+  --wood-base: oklch(0.74 0.1 78);
+  --grid-ink: oklch(0.32 0.04 55 / 0.6);
+  --hoshi-ink: oklch(0.3 0.04 50 / 0.72);
+  --stone-black-rim: oklch(0.45 0.02 65);
+  --stone-black-core: oklch(0.16 0.01 60);
+  --stone-white-rim: oklch(0.99 0.005 90);
+  --stone-white-core: oklch(0.86 0.015 80);
+
+  /* Accent family: amber for state/selection, cinnabar for the last move. */
+  --accent: oklch(0.72 0.12 72);
+  --accent-soft: oklch(0.72 0.12 72 / 0.22);
+  --cinnabar: oklch(0.55 0.17 30);
+
+  /* Serif voice for the status line and panel titles. */
+  --serif: "Songti SC", "STSong", "Noto Serif CJK SC", Georgia, "Times New Roman", serif;
 }
 
 .inner {
@@ -23,20 +55,47 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 
+/* Per-side AI panel card. */
 .sidePanel {
   width: 300px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
   gap: 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px;
+  background: var(--panel-bg);
 }
 
 .panelTitle {
-  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--serif);
+  font-size: 14px;
   font-weight: 600;
+}
+
+/* Miniature stone dots beside the panel titles. */
+.titleStone {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex: none;
+}
+
+.titleStoneBlack {
+  background: radial-gradient(circle at 35% 30%, var(--stone-black-rim), var(--stone-black-core) 75%);
+  box-shadow: 0 1px 1px oklch(0.15 0.02 50 / 0.5);
+}
+
+.titleStoneWhite {
+  background: radial-gradient(circle at 35% 30%, var(--stone-white-rim), var(--stone-white-core) 75%);
+  box-shadow: 0 1px 1px oklch(0.3 0.03 55 / 0.4);
 }
 
 .toolbar {
@@ -48,106 +107,220 @@
 
 .label {
   font-size: 12px;
-  opacity: 0.75;
+  color: var(--label-tertiary);
 }
 
+/* Joined-pill segmented control; the active segment gets the amber fill. */
 .segmented {
   display: inline-flex;
-  border: 1px solid rgba(128, 128, 128, 0.35);
-  border-radius: 6px;
-  overflow: hidden;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--panel-bg);
 }
 
 .segButton {
   border: none;
   background: transparent;
-  padding: 4px 10px;
+  padding: 3px 12px;
   font-size: 12px;
+  border-radius: 999px;
   cursor: pointer;
-  color: inherit;
+  color: var(--label-secondary);
+  transition: background-color 160ms ease, color 160ms ease;
 }
 
-.segButton + .segButton {
-  border-left: 1px solid rgba(128, 128, 128, 0.35);
+.segButton:hover:not(:disabled) {
+  background: var(--interactive-hover);
+  color: var(--label-primary);
 }
 
 .segActive {
-  background: rgba(90, 140, 220, 0.35);
+  background: var(--accent-soft);
+  color: var(--label-primary);
+  font-weight: 600;
 }
 
 .select {
   font-size: 12px;
-  padding: 3px 6px;
-  border-radius: 6px;
-  border: 1px solid rgba(128, 128, 128, 0.4);
+  padding: 5px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
   background: transparent;
   color: inherit;
   width: 100%;
   box-sizing: border-box;
+  transition: border-color 160ms ease;
 }
 
+.select:disabled {
+  opacity: 0.5;
+}
+
+/* Capsule action buttons (new game / pause / restore). */
 .ghost {
-  border: 1px solid rgba(128, 128, 128, 0.4);
-  border-radius: 6px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
   background: transparent;
-  color: inherit;
-  font-size: 12px;
-  padding: 4px 10px;
-  cursor: pointer;
-}
-
-.ghost:hover {
-  background: rgba(128, 128, 128, 0.18);
-}
-
-.primary {
-  border: 1px solid rgba(90, 140, 220, 0.8);
-  border-radius: 6px;
-  background: rgba(90, 140, 220, 0.25);
-  color: inherit;
+  color: var(--label-secondary);
   font-size: 12px;
   padding: 4px 12px;
   cursor: pointer;
+  transition: background-color 160ms ease, color 160ms ease, border-color 160ms ease;
+}
+
+.ghost:hover:not(:disabled) {
+  background: var(--interactive-hover);
+  color: var(--label-primary);
+}
+
+/* Amber primary: the prompt save action. */
+.primary {
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--label-primary);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 14px;
+  cursor: pointer;
+  transition: background-color 160ms ease, border-color 160ms ease;
+}
+
+.primary:hover:not(:disabled) {
+  background: oklch(0.72 0.12 72 / 0.32);
+}
+
+/* Below-the-board action buttons: icon + label capsules. */
+.action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--panel-bg);
+  color: var(--label-primary);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.action:hover:not(:disabled) {
+  background: var(--interactive-hover);
+  border-color: var(--dsw-alias-border-l3, rgba(128, 128, 128, 0.45));
+}
+
+.action:active:not(:disabled) {
+  background: var(--interactive-active);
+}
+
+.action:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
+/* Paused: the resume button turns amber. */
+.actionPaused {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.actionPaused:hover:not(:disabled) {
+  background: oklch(0.72 0.12 72 / 0.32);
+}
+
+.actionIcon {
+  width: 15px;
+  height: 15px;
+  flex: none;
 }
 
 .statusRow {
   display: flex;
   align-items: center;
-  gap: 10px;
-  min-height: 18px;
+  gap: 8px;
+  min-height: 20px;
 }
 
+/* The status voice: serif, quiet. */
 .status {
-  font-size: 13px;
+  font-family: var(--serif);
+  font-size: 15px;
   font-weight: 600;
+  letter-spacing: 0.02em;
 }
 
 .statusError {
-  color: #e05252;
+  color: var(--error);
+}
+
+/* State dot: stone color for the side to move, amber for paused/thinking,
+   red for errors, neutral for a draw. */
+.statusDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex: none;
+}
+
+.dotBlack {
+  background: radial-gradient(circle at 35% 30%, var(--stone-black-rim), var(--stone-black-core) 75%);
+}
+
+.dotWhite {
+  background: radial-gradient(circle at 35% 30%, var(--stone-white-rim), var(--stone-white-core) 75%);
+  border: 1px solid oklch(0.5 0.03 60 / 0.4);
+}
+
+.dotAmber {
+  background: var(--accent);
+}
+
+.dotError {
+  background: var(--error);
+}
+
+.dotNeutral {
+  background: var(--label-tertiary);
+}
+
+.dotPulse {
+  animation: dot-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes dot-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
 }
 
 .retry {
-  border: 1px solid rgba(224, 82, 82, 0.7);
-  border-radius: 6px;
-  background: rgba(224, 82, 82, 0.15);
-  color: inherit;
+  border: 1px solid var(--error);
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--error) 12%, transparent);
+  color: var(--error);
   font-size: 12px;
-  padding: 2px 10px;
+  padding: 2px 12px;
   cursor: pointer;
+  transition: background-color 160ms ease;
 }
 
 .retry:hover {
-  background: rgba(224, 82, 82, 0.3);
+  background: color-mix(in oklab, var(--error) 24%, transparent);
 }
 
 .hint {
   font-size: 11px;
-  opacity: 0.6;
+  color: var(--label-tertiary);
   min-height: 14px;
   text-align: center;
 }
 
-/* Below-the-board controls: the mode selector and the new-game button. */
+/* Below-the-board controls: mode selector + action buttons. */
 .bottomBar {
   display: flex;
   align-items: center;
@@ -155,26 +328,33 @@
   gap: 10px;
   flex-wrap: wrap;
   width: 100%;
-  margin-top: 4px;
+  margin-top: 6px;
 }
 
 /* 15×15 intersections: one line per row/column center, so the outer lines
    sit at the outermost intersections (the board frame) and every stone
-   lands exactly on a crossing. */
+   lands exactly on a crossing. The wood is layered: base amber, vertical
+   grain, a soft top sheen, an edge vignette, then the ink grid lines. */
 .board {
   display: grid;
   grid-template-columns: repeat(15, 1fr);
   aspect-ratio: 1;
   width: 100%;
   max-width: 560px;
-  border-radius: 6px;
+  border-radius: 12px;
   overflow: hidden;
-  background-color: #d9a94e;
+  background-color: var(--wood-base);
   background-image:
-    linear-gradient(90deg, transparent calc(50% - 0.5px), rgba(60, 35, 10, 0.45) calc(50% - 0.5px), rgba(60, 35, 10, 0.45) calc(50% + 0.5px), transparent calc(50% + 0.5px)),
-    linear-gradient(to bottom, transparent calc(50% - 0.5px), rgba(60, 35, 10, 0.45) calc(50% - 0.5px), rgba(60, 35, 10, 0.45) calc(50% + 0.5px), transparent calc(50% + 0.5px));
-  background-size: calc(100% / 15) 100%, 100% calc(100% / 15);
-  background-repeat: repeat-x, repeat-y;
+    repeating-linear-gradient(90deg, oklch(0.66 0.09 70 / 0.14) 0 1px, transparent 1px 6px),
+    radial-gradient(120% 60% at 50% 0%, oklch(0.86 0.08 80 / 0.35), transparent 60%),
+    radial-gradient(130% 130% at 50% 50%, transparent 55%, oklch(0.45 0.06 55 / 0.3)),
+    linear-gradient(90deg, transparent calc(50% - 0.5px), var(--grid-ink) calc(50% - 0.5px), var(--grid-ink) calc(50% + 0.5px), transparent calc(50% + 0.5px)),
+    linear-gradient(to bottom, transparent calc(50% - 0.5px), var(--grid-ink) calc(50% - 0.5px), var(--grid-ink) calc(50% + 0.5px), transparent calc(50% + 0.5px));
+  background-size: auto, auto, auto, calc(100% / 15) 100%, 100% calc(100% / 15);
+  background-repeat: repeat, no-repeat, no-repeat, repeat-x, repeat-y;
+  box-shadow:
+    0 1px 2px oklch(0.2 0.03 50 / 0.4),
+    0 10px 24px oklch(0.2 0.03 50 / 0.28);
   user-select: none;
 }
 
@@ -191,7 +371,12 @@
 }
 
 .cell:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.18);
+  background: oklch(1 0.02 85 / 0.16);
+}
+
+.cell:focus-visible {
+  outline: 2px solid oklch(0.25 0.03 50 / 0.8);
+  outline-offset: -2px;
 }
 
 /* Stones are centered on the cell center — the intersection. */
@@ -200,67 +385,95 @@
   inset: 8%;
   border-radius: 50%;
   pointer-events: none;
+  animation: stone-pop 180ms cubic-bezier(0.25, 1, 0.4, 1);
+}
+
+@keyframes stone-pop {
+  from {
+    transform: scale(0.85);
+    opacity: 0.6;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 .stoneBlack {
-  background: radial-gradient(circle at 35% 30%, #565656, #0a0a0a 70%);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+  background: radial-gradient(circle at 35% 30%, var(--stone-black-rim), var(--stone-black-core) 75%);
+  box-shadow:
+    0 1px 2px oklch(0.15 0.02 50 / 0.6),
+    inset 0 1px 1px oklch(0.9 0.02 80 / 0.25);
 }
 
 .stoneWhite {
-  background: radial-gradient(circle at 35% 30%, #ffffff, #c2c2c2 70%);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+  background: radial-gradient(circle at 35% 30%, var(--stone-white-rim), var(--stone-white-core) 75%);
+  box-shadow:
+    0 1px 2px oklch(0.3 0.03 55 / 0.45),
+    inset 0 -1px 1px oklch(0.5 0.03 60 / 0.35);
 }
 
-.lastMove {
-  outline: 2px solid #e33b3b;
-  outline-offset: 1px;
+/* Ghost stone shown on hover of a playable intersection. */
+.preview {
+  opacity: 0;
+  animation: none;
+  transition: opacity 160ms ease;
 }
 
-/* The tengen star point, drawn while the intersection is still empty. */
-.tengen {
+.cell:hover:not(:disabled) .preview,
+.cell:focus-visible .preview {
+  opacity: 0.45;
+}
+
+/* The last move: a cinnabar dot in the stone's corner. */
+.lastMove::after {
+  content: '';
+  position: absolute;
+  top: 10%;
+  right: 10%;
+  width: 22%;
+  height: 22%;
+  border-radius: 50%;
+  background: var(--cinnabar);
+  box-shadow: 0 0 0 1px oklch(0.3 0.05 30 / 0.35);
+}
+
+/* Star points (hoshi + tengen), drawn while the intersection is empty. */
+.hoshi {
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 26%;
-  height: 26%;
+  width: 24%;
+  height: 24%;
   transform: translate(-50%, -50%);
   border-radius: 50%;
-  background: rgba(60, 35, 10, 0.55);
+  background: var(--hoshi-ink);
   pointer-events: none;
 }
 
 .field {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px;
   flex: 1;
   min-width: 0;
 }
 
-.input {
-  width: 100%;
-  box-sizing: border-box;
-  font-size: 12px;
-  padding: 3px 6px;
-  border-radius: 6px;
-  border: 1px solid rgba(128, 128, 128, 0.4);
-  background: transparent;
-  color: inherit;
-}
-
+/* The prompt editor well. */
 .promptArea {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  border: 1px solid rgba(128, 128, 128, 0.3);
-  border-radius: 6px;
-  padding: 8px;
+  gap: 8px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px;
+  background: var(--well-bg);
 }
 
 .promptTitle {
   font-size: 12px;
   font-weight: 600;
+  color: var(--label-secondary);
 }
 
 .promptTextarea {
@@ -269,12 +482,13 @@
   font-size: 12px;
   font-family: inherit;
   line-height: 1.5;
-  padding: 6px;
-  border-radius: 6px;
-  border: 1px solid rgba(128, 128, 128, 0.4);
-  background: rgba(0, 0, 0, 0.12);
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--well-bg);
   color: inherit;
   resize: vertical;
+  transition: border-color 160ms ease;
 }
 
 .promptActions {
@@ -285,16 +499,17 @@
 
 .flash {
   font-size: 12px;
-  color: #4caf50;
+  color: var(--success);
 }
 
+/* Reasoning log: hairline rows inside a quiet well. */
 .reasoningList {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  border: 1px solid rgba(128, 128, 128, 0.3);
-  border-radius: 6px;
-  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 6px 10px;
+  background: var(--well-bg);
   max-height: 320px;
   overflow-y: auto;
 }
@@ -302,12 +517,12 @@
 .reasoningTitle {
   font-size: 12px;
   font-weight: 600;
+  color: var(--label-secondary);
+  padding: 4px 0 6px;
 }
 
-.reasoningItem {
-  border: 1px solid rgba(128, 128, 128, 0.25);
-  border-radius: 6px;
-  padding: 4px 8px;
+.reasoningItem + .reasoningItem {
+  border-top: 1px solid var(--border-soft);
 }
 
 /* The entry header doubles as the expand/collapse toggle. */
@@ -320,21 +535,23 @@
   border: none;
   background: transparent;
   color: inherit;
-  padding: 4px 2px;
+  padding: 5px 2px;
   font-size: 12px;
   font-weight: 600;
   text-align: left;
   cursor: pointer;
+  border-radius: 6px;
+  transition: background-color 150ms ease;
 }
 
 .reasoningHeader:hover {
-  opacity: 0.85;
+  background: var(--interactive-hover);
 }
 
 .chevron {
   display: inline-block;
   font-size: 10px;
-  transition: transform 0.15s ease;
+  transition: transform 150ms ease;
 }
 
 .chevronOpen {
@@ -348,18 +565,57 @@
 }
 
 .errorText {
-  color: #e05252;
+  color: var(--error);
   font-weight: 400;
 }
 
 .reasoningText {
-  margin: 6px 0 0;
+  margin: 6px 0 2px;
   font-size: 11px;
   line-height: 1.5;
   white-space: pre-wrap;
   word-break: break-word;
   font-family: inherit;
-  opacity: 0.85;
+  color: var(--label-secondary);
+  padding: 8px;
+  border-radius: 6px;
+  background: var(--well-bg);
+}
+
+/* Shared focus ring for every interactive control. */
+.action:focus-visible,
+.ghost:focus-visible,
+.primary:focus-visible,
+.retry:focus-visible,
+.segButton:focus-visible,
+.reasoningHeader:focus-visible,
+.select:focus-visible,
+.promptTextarea:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Reduced motion: no stone pop, no pulse, no transitions. */
+@media (prefers-reduced-motion: reduce) {
+  .stone {
+    animation: none;
+  }
+
+  .dotPulse {
+    animation: none;
+  }
+
+  .segButton,
+  .action,
+  .ghost,
+  .primary,
+  .retry,
+  .preview,
+  .chevron,
+  .select,
+  .promptTextarea {
+    transition: none;
+  }
 }
 
 /* The view adds `.viewActive` to <html> on mount; while it is present the

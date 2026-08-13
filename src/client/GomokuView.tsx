@@ -23,7 +23,7 @@ import {
   type Cell, type GameMode, type Thinking,
 } from './game.ts'
 import {
-  changeMode, getSnapshot, loadModels, newGame, patchSettings, placeStone, retryMove, subscribe,
+  changeMode, getSnapshot, loadModels, newGame, patchSettings, placeStone, retryMove, subscribe, togglePause,
   type GameState, type ModelGroup, type ReasoningEntry, type SideModel,
 } from './store.ts'
 import css from './Gomoku.module.css'
@@ -43,11 +43,22 @@ const THINKINGS: readonly { value: Thinking; key: GomokuKey }[] = [
   { value: 'max', key: 'thinking.max' },
 ]
 
+/**
+ * The five star points of a 15×15 board (row-major indices): the four corner
+ * hoshi plus tengen. Drawn while the intersection is still empty.
+ */
+const HOSHI: ReadonlySet<number> = new Set([
+  3 * BOARD_SIZE + 3, 3 * BOARD_SIZE + 11,
+  11 * BOARD_SIZE + 3, 11 * BOARD_SIZE + 11,
+  TENGEN.row * BOARD_SIZE + TENGEN.col,
+])
+
 /** The status line copy for the current game. */
 function statusCopy(game: GameState, t: PropsLocale<'gomoku'>['t']): { text: string; error: boolean } {
   if (game.winner === BLACK) return { text: t('status.win.black'), error: false }
   if (game.winner === WHITE) return { text: t('status.win.white'), error: false }
   if (game.draw) return { text: t('status.draw'), error: false }
+  if (game.paused) return { text: t('status.paused'), error: false }
   if (game.thinking) return { text: t('status.thinking'), error: false }
   const last = game.log[game.log.length - 1]
   if (last?.interrupted === true) return { text: t('status.interrupted'), error: true }
@@ -60,15 +71,18 @@ function statusCopy(game: GameState, t: PropsLocale<'gomoku'>['t']): { text: str
 
 /** One intersection: clickable when it is the human's turn. */
 function CellButton({
-  row, col, cell, last, playable, onClick,
+  row, col, cell, last, playable, preview, onClick,
 }: {
   row: number
   col: number
   cell: Cell
   last: boolean
   playable: boolean
+  /** The stone color shown as a ghost on hover (the side about to move). */
+  preview: Cell
   onClick: (row: number, col: number) => void
 }) {
+  const index = row * BOARD_SIZE + col
   return (
     <button
       type="button"
@@ -79,7 +93,8 @@ function CellButton({
       onClick={() => onClick(row, col)}
     >
       {cell !== EMPTY && <span className={`${css.stone} ${cell === BLACK ? css.stoneBlack : css.stoneWhite}${last ? ` ${css.lastMove}` : ''}`} />}
-      {cell === EMPTY && row === TENGEN.row && col === TENGEN.col && <span className={css.tengen} />}
+      {cell === EMPTY && playable && preview !== EMPTY && <span className={`${css.stone} ${preview === BLACK ? css.stoneBlack : css.stoneWhite} ${css.preview}`} />}
+      {cell === EMPTY && HOSHI.has(index) && <span className={css.hoshi} />}
     </button>
   )
 }
@@ -203,10 +218,11 @@ function PromptEditor({
  * (entries default collapsed; click to expand).
  */
 function SidePanel({
-  title, modelLabel, promptLabel, logTitle, model, thinking, prompt, groups, log, expanded, t,
+  title, stone, modelLabel, promptLabel, logTitle, model, thinking, prompt, groups, log, expanded, t,
   onModelChange, onThinkingChange, onPromptSave, onToggleEntry,
 }: {
   title: string
+  stone: 'black' | 'white'
   modelLabel: string
   promptLabel: string
   logTitle: string
@@ -224,7 +240,10 @@ function SidePanel({
 }) {
   return (
     <div className={css.sidePanel}>
-      <div className={css.panelTitle}>{title}</div>
+      <div className={css.panelTitle}>
+        <span className={`${css.titleStone} ${stone === 'black' ? css.titleStoneBlack : css.titleStoneWhite}`} />
+        {title}
+      </div>
 
       <ModelSelect
         label={modelLabel}
@@ -310,7 +329,18 @@ export function GomokuView({ t }: GomokuViewProps) {
   const opening = game.moveCount === 0
   // A failed AI move leaves the game waiting on that side; offer a retry
   // (the store ignores it when it is the human's turn or a request is live).
-  const retryableError = status.error && !settled && !game.thinking
+  // While paused the human owns the board, so no retry is offered.
+  const retryableError = status.error && !settled && !game.thinking && !game.paused
+
+  // The status dot's voice follows the game state: the side to move (stone
+  // color), amber for paused/thinking, red for errors.
+  const statusDot = settled
+    ? (game.winner === BLACK ? css.dotBlack : game.winner === WHITE ? css.dotWhite : css.dotNeutral)
+    : status.error
+      ? css.dotError
+      : game.paused || game.thinking
+        ? `${css.dotAmber} ${css.dotPulse}`
+        : game.turn === BLACK ? css.dotBlack : css.dotWhite
 
   const toggleEntry = (n: number): void => {
     setExpandedEntries(prev => {
@@ -328,7 +358,8 @@ export function GomokuView({ t }: GomokuViewProps) {
     <div className={css.view}>
       <div className={css.inner}>
         <SidePanel
-          title={`⚫ ${t('panel.black')}`}
+          title={t('panel.black')}
+          stone="black"
           modelLabel={t('panel.model.black')}
           promptLabel={t('panel.prompt.black')}
           logTitle={t('panel.log.black')}
@@ -347,15 +378,17 @@ export function GomokuView({ t }: GomokuViewProps) {
 
         <div className={css.boardColumn}>
           <div className={css.statusRow}>
+            <span className={`${css.statusDot} ${statusDot}`} aria-hidden="true" />
             <div className={`${css.status}${status.error ? ` ${css.statusError}` : ''}`}>{status.text}</div>
             {retryableError && (
               <button type="button" className={css.retry} onClick={retryMove}>{t('status.retry')}</button>
             )}
           </div>
           <div className={css.hint}>
-            {settings.mode === 'black' && t('status.side.hint')}
-            {settings.mode === 'white' && t('status.side.hint.white')}
-            {settings.mode === 'both' && t('status.side.hint.both')}
+            {game.paused && t('status.paused.hint')}
+            {!game.paused && settings.mode === 'black' && t('status.side.hint')}
+            {!game.paused && settings.mode === 'white' && t('status.side.hint.white')}
+            {!game.paused && settings.mode === 'both' && t('status.side.hint.both')}
             {opening && ` · ${t('rule.first.tengen')}`}
           </div>
           <div className={css.board} role="grid" aria-label={t('tab.label')}>
@@ -363,6 +396,7 @@ export function GomokuView({ t }: GomokuViewProps) {
               const row = Math.floor(index / BOARD_SIZE)
               const col = index % BOARD_SIZE
               const last = game.lastMove !== null && game.lastMove.row === row && game.lastMove.col === col
+              const playable = !settled && !game.thinking && (game.paused || humanTurn)
               return (
                 <CellButton
                   key={index}
@@ -370,14 +404,17 @@ export function GomokuView({ t }: GomokuViewProps) {
                   col={col}
                   cell={cell}
                   last={last}
-                  playable={!settled && !game.thinking && humanTurn}
+                  playable={playable}
+                  preview={playable ? game.turn : EMPTY}
                   onClick={placeStone}
                 />
               )
             })}
           </div>
 
-          {/* Below the board: the mode selector and the new-game button. */}
+          {/* Below the board: the mode selector, the new-game button, and the
+              pause/resume button. Inline SVG icons (no image assets) paired
+              with text labels; the pause button turns amber while paused. */}
           <div className={css.bottomBar}>
             <span className={css.label}>{t('panel.mode')}</span>
             <div className={css.segmented} role="group" aria-label={t('panel.mode')}>
@@ -392,12 +429,42 @@ export function GomokuView({ t }: GomokuViewProps) {
                 </button>
               ))}
             </div>
-            <button type="button" className={css.ghost} onClick={() => newGame()}>{t('panel.newGame')}</button>
+            <button
+              type="button"
+              className={css.action}
+              onClick={() => newGame()}
+              aria-label={t('panel.newGame')}
+              title={t('panel.newGame')}
+            >
+              <svg className={css.actionIcon} viewBox="0 0 16 16" aria-hidden="true">
+                <path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                <path d="M13.7 1.9v3.2h-3.2" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              <span>{t('panel.newGame')}</span>
+            </button>
+            <button
+              type="button"
+              className={`${css.action}${game.paused ? ` ${css.actionPaused}` : ''}`}
+              disabled={settled}
+              onClick={togglePause}
+              aria-label={game.paused ? t('panel.resume') : t('panel.pause')}
+              title={game.paused ? t('panel.resume') : t('panel.pause')}
+            >
+              <svg className={css.actionIcon} viewBox="0 0 16 16" aria-hidden="true">
+                {game.paused ? (
+                  <path d="M5.2 3.4l7 4.6-7 4.6z" fill="currentColor" />
+                ) : (
+                  <path d="M5.5 3.5v9M10.5 3.5v9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                )}
+              </svg>
+              <span>{game.paused ? t('panel.resume') : t('panel.pause')}</span>
+            </button>
           </div>
         </div>
 
         <SidePanel
-          title={`⚪ ${t('panel.white')}`}
+          title={t('panel.white')}
+          stone="white"
           modelLabel={t('panel.model.white')}
           promptLabel={t('panel.prompt.white')}
           logTitle={t('panel.log.white')}

@@ -119,4 +119,86 @@ store.retryMove()
 await settle()
 check('retry after watchdog interruption lands the move', store.getSnapshot().game.moveCount === 1 && store.getSnapshot().game.thinking === false)
 
+// --- pause: cutting off AI thinking, manual both-side play, resume ---
+// The stub hangs until the request is aborted (AbortError), like a provider
+// whose response the pause interrupts mid-thought. Use the real timer here so
+// the watchdog (moveTimeoutMs + margin) never fires while the request hangs —
+// the pause must be what cuts it off.
+globalThis.window = { setTimeout, clearTimeout }
+globalThis.fetch = (_url, options) => new Promise((_, reject) => {
+  options.signal.addEventListener('abort', () => reject(Object.assign(new Error('aborted'), { name: 'AbortError' })))
+})
+store.newGame('both') // restart in both mode; AI black opens → the request hangs in flight
+await settle(50)
+check('AI request in flight before pause', store.getSnapshot().game.thinking === true)
+store.togglePause()
+{
+  const s = store.getSnapshot().game
+  check('pause clears thinking immediately', s.paused === true && s.thinking === false)
+}
+await settle(50)
+check('aborted request recorded as interrupted, paused preserved', store.getSnapshot().game.log.at(-1)?.interrupted === true && store.getSnapshot().game.paused === true)
+
+// Paused: the human plays BOTH sides, turn alternates, no move-count limit,
+// and no AI request fires.
+store.placeStone(7, 7) // black's tengen opening still applies
+{
+  const s = store.getSnapshot().game
+  check('paused manual black opening accepted', s.moveCount === 1 && s.board[7 * 15 + 7] === game.BLACK && s.turn === game.WHITE)
+}
+store.placeStone(6, 6) // white (the AI side in both mode) — allowed while paused
+{
+  const s = store.getSnapshot().game
+  check('paused manual white accepted (AI side)', s.moveCount === 2 && s.board[6 * 15 + 6] === game.WHITE && s.turn === game.BLACK)
+}
+store.placeStone(5, 5) // black again — no limit on manual moves
+{
+  const s = store.getSnapshot().game
+  check('no move-count limit while paused', s.moveCount === 3 && s.board[5 * 15 + 5] === game.BLACK && s.turn === game.WHITE)
+  check('no AI request fired while paused', s.thinking === false)
+}
+
+// Resume hands the turn back to the AI when it is the AI's side.
+globalThis.fetch = async () => ({ ok: true, status: 200, json: async () => ({ move: { row: 8, col: 8 }, reasoning: 'resumed' }) })
+store.togglePause()
+check('resume clears paused and re-engages the AI', store.getSnapshot().game.paused === false && store.getSnapshot().game.thinking === true)
+await settle()
+{
+  const s = store.getSnapshot().game
+  check('resumed AI move landed', s.moveCount === 4 && s.board[8 * 15 + 8] === game.WHITE && s.thinking === false)
+}
+
+// --- pause on the human's own turn still unlocks both sides ---
+store.changeMode('black') // new game; human black opens; newGame resets pause
+store.placeStone(7, 7) // human black tengen → AI white replies (8,8)
+await settle()
+check('human black then AI white landed', store.getSnapshot().game.moveCount === 2 && store.getSnapshot().game.turn === game.BLACK)
+store.togglePause() // pause during the human's own turn
+store.placeStone(9, 9) // black again
+store.placeStone(10, 10) // white — the AI's side, playable while paused
+{
+  const s = store.getSnapshot().game
+  check('paused on human turn: both sides playable', s.board[9 * 15 + 9] === game.BLACK && s.board[10 * 15 + 10] === game.WHITE && s.moveCount === 4 && s.paused === true)
+}
+store.newGame()
+check('new game resets pause', store.getSnapshot().game.paused === false && store.getSnapshot().game.moveCount === 0)
+
+// --- a win reached while paused settles the game; resume becomes a no-op ---
+store.togglePause() // paused on a fresh game
+store.placeStone(7, 7) // black tengen
+store.placeStone(0, 0) // white
+store.placeStone(6, 6) // black
+store.placeStone(0, 1) // white
+store.placeStone(5, 5) // black
+store.placeStone(0, 2) // white
+store.placeStone(4, 4) // black
+store.placeStone(0, 3) // white
+store.placeStone(3, 3) // black — diagonal five (3,3)..(7,7)
+{
+  const s = store.getSnapshot().game
+  check('win reached while paused settles the game', s.winner === game.BLACK && s.paused === true)
+}
+store.togglePause()
+check('resume is a no-op on a settled game', store.getSnapshot().game.paused === true && store.getSnapshot().game.thinking === false)
+
 process.exit(failures === 0 ? 0 : 1)

@@ -39,6 +39,9 @@ export interface GameState {
   draw: boolean
   /** True while an AI move request is in flight. */
   thinking: boolean
+  /** True in manual-takeover (pause) mode: AI requests are cut off and the
+   *  human plays both sides until the pause is released. */
+  paused: boolean
   /** The last played intersection (win-marker highlight). */
   lastMove: { row: number; col: number } | null
   /** The reasoning log, newest last. */
@@ -83,8 +86,8 @@ export interface SettingsState {
   modelsError: string | undefined
 }
 
-/** The fixed per-move deadline in milliseconds (not user-adjustable). */
-export const DEFAULT_MOVE_TIMEOUT_MS = 300_000
+/** The fixed per-move deadline in milliseconds (3000 seconds; not user-adjustable). */
+export const DEFAULT_MOVE_TIMEOUT_MS = 3_000_000
 /** The fixed per-move output-token cap (not user-adjustable). */
 export const DEFAULT_MAX_MOVE_OUTPUT_TOKENS = 32_000
 
@@ -107,6 +110,7 @@ function freshGame(): GameState {
     winner: EMPTY,
     draw: false,
     thinking: false,
+    paused: false,
     lastMove: null,
     log: [],
     moveCount: 0,
@@ -255,15 +259,36 @@ export function changeMode(mode: GameMode): void {
   newGame(mode)
 }
 
-/** Human click on an empty intersection. */
+/** Human click on an empty intersection. While paused the human may play
+ * either side (turn order still alternates, no move-count limit); otherwise
+ * only the human's own side accepts clicks. */
 export function placeStone(row: number, col: number): void {
   const { game, settings } = snapshot
   if (gameOver(game) || game.thinking) return
-  if (!isHumanTurn(settings.mode, game.turn)) return
+  if (!game.paused && !isHumanTurn(settings.mode, game.turn)) return
   const next = placed(game, row, col)
   if (next === null) return
   commitGame(next)
-  if (!gameOver(next) && isAiTurn(settings.mode, next.turn)) scheduleAi()
+  if (!gameOver(next) && !next.paused && isAiTurn(settings.mode, next.turn)) scheduleAi()
+}
+
+/**
+ * Toggle manual-takeover (pause) mode. Pausing cuts off any in-flight AI
+ * move (the board stays fully playable for both sides, and the interrupted
+ * request's catch path only records a log entry — it can never touch the
+ * board, because the pause commit already cleared the thinking flag).
+ * Releasing the pause hands the turn back to the AI when it is the AI's side.
+ */
+export function togglePause(): void {
+  const { game, settings } = snapshot
+  if (gameOver(game)) return
+  if (game.paused) {
+    commitGame({ ...game, paused: false })
+    if (isAiTurn(settings.mode, game.turn)) scheduleAi()
+  } else {
+    abort?.abort()
+    commitGame({ ...game, paused: true, thinking: false })
+  }
 }
 
 /** Apply one settings patch (model selection, thinking, overrides, prompt). */
@@ -274,12 +299,13 @@ export function patchSettings(patch: Partial<SettingsState>): void {
 /**
  * Retry the current move: re-run the AI move for the side whose last attempt
  * failed (the board is unchanged and it is that side's turn). A no-op while
- * the game is settled, a request is in flight, or it is the human's turn
- * (the human can simply click the board).
+ * the game is settled, a request is in flight, the game is paused (manual
+ * play owns the board), or it is the human's turn (the human can simply
+ * click the board).
  */
 export function retryMove(): void {
   const { game, settings } = snapshot
-  if (gameOver(game) || game.thinking) return
+  if (gameOver(game) || game.thinking || game.paused) return
   if (!isAiTurn(settings.mode, game.turn)) return
   scheduleAi()
 }

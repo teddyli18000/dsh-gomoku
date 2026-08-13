@@ -73,7 +73,7 @@ export interface Config {
 export const Config: z<Config> = z.object({
   // Fixed at the product level: the browser half always sends these values
   // per request, so the UI no longer exposes them.
-  moveTimeoutMs: z.number().step(1).min(1000).default(300_000),
+  moveTimeoutMs: z.number().step(1).min(1000).default(3_000_000),
   // Generous by default: reasoning models count their thinking toward the
   // output budget, and a truncated reply is only salvageable when the JSON
   // itself survives the cut.
