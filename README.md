@@ -4,7 +4,7 @@
 
 ![dsh-gomoku](assets/screenshot.png)
 
-总是让 AI 帮你写代码、做表格？这次换它陪你下棋。`@deepseek-ai/dsh-gomoku` 是 DeepSeek Harness 的五子棋插件：在 DSH 侧边栏摆上一盘 15×15 的棋盘，让 DeepSeek 或任何你配置好的模型执子对弈。
+总是让 AI 帮你写代码、做表格？这次换它陪你下棋。`@yejiming/dsh-gomoku` 是 DeepSeek Harness 的五子棋插件：在 DSH 侧边栏摆上一盘 15×15 的棋盘，让 DeepSeek 或任何你配置好的模型执子对弈。
 
 这里没有搜索算法，也没有启发式剪枝——每一步落子都来自 LLM 纯粹的推理与判断，堪称对模型「思考能力」最直观的考验。最过瘾的当属双 AI 对战：让两个模型同台厮杀，谁的推理更缜密、更懂审时度势，一局见分晓。
 
@@ -25,16 +25,30 @@
 
 ## 快速安装
 
-DSH 的标准插件安装机制是「组合包 → profile」：插件包在 `package.json` 中声明 `dsh.bundle` 并附带 patch 文件（`cordis.patch.yml`），用户用 `dsh plugin` 把它安装进任意 profile：
+支持三种安装方式，均**无需本地构建**（构建产物 `lib/` 已提交进仓库，且不设 `prepare`/`prepack` 脚本）。DSH 的标准插件安装机制是「组合包 → profile」：插件包在 `package.json` 中声明 `dsh.bundle` 并附带 patch 文件（`cordis.patch.yml`），用户用 `dsh plugin` 把它安装进任意 profile。
+
+### 方式一：npm 安装（推荐）
+
+```sh
+# 从 npm 安装（首次使用会初始化该 profile）
+dsh plugin --profile demo add @yejiming/dsh-gomoku
+```
+
+### 方式二：GitHub 源码安装
+
+```sh
+# 从 GitHub 源码安装（仓库已提交构建产物 lib/，安装时无需构建）
+dsh plugin --profile demo add github:omdsh-dev/dsh-gomoku
+```
+
+### 方式三：本地 checkout / tarball 安装
 
 ```sh
 # 从本地 checkout 安装（在插件目录内执行）
 dsh plugin --profile demo add .
-# 从 GitHub 安装（https://github.com/omdsh-dev/dsh-gomoku）
-dsh plugin --profile demo add github:omdsh-dev/dsh-gomoku
-# 从 tarball 安装（tarball 由 pnpm pack 在仓库内生成，文件名形如 deepseek-ai-dsh-gomoku-<版本>.tgz）
+# 从 tarball 安装（tarball 由 pnpm pack 生成，文件名形如 yejiming-dsh-gomoku-<版本>.tgz）
 pnpm pack
-dsh plugin --profile demo add ./deepseek-ai-dsh-gomoku-0.0.1.tgz
+dsh plugin --profile demo add ./yejiming-dsh-gomoku-0.0.1.tgz
 ```
 
 以上方式都直接使用仓库内提交的预构建产物（`lib/`），安装时不需要执行构建脚本——从 git 安装也无需在 profile 的 `pnpm-workspace.yaml` 里配置 `allowBuilds`。要求 dsh ≥ 0.1.0-rc.6：插件使用 `@deepseek-ai/dsh-host-webserver` 的 `webServer` 服务，更早版本的 dsh 没有该服务，插件行会一直 pending。若 pnpm 提示 peer 依赖警告，可忽略：所需服务由宿主 dsh 在运行时提供。
@@ -46,7 +60,7 @@ dsh --profile demo --dump-config   # 输出中应出现 gomoku 层
 dsh --profile demo
 ```
 
-移除：`dsh plugin --profile demo remove @deepseek-ai/dsh-gomoku` 会同时移除依赖与对应层。
+移除：`dsh plugin --profile demo remove @yejiming/dsh-gomoku` 会同时移除依赖与对应层。
 
 ## 架构
 

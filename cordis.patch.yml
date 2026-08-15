@@ -6,4 +6,4 @@
 # belongs here (duplicate ids fail the load).
 - insert:
     - id: gomoku
-      name: '@deepseek-ai/dsh-gomoku'
+      name: '@yejiming/dsh-gomoku'

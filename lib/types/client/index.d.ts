@@ -2,7 +2,7 @@
  * Gomoku browser half, plugin entry: registers the gomoku conversation view
  * tab (right of Trajectory) and the gomoku dictionaries. The board state
  * lives in the module-level store, so tab switches never reset the game.
- * @module @deepseek-ai/dsh-gomoku/client
+ * @module @yejiming/dsh-gomoku/client
  */
 import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client';
 import { type GomokuKey } from './locales.ts';

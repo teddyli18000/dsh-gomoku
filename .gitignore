@@ -4,6 +4,7 @@ node_modules/
 # Build output (lib/ is committed so git/tarball installs need no build step)
 dist/
 *.tsbuildinfo
+*.tgz
 
 # Internal notes & prompts (not for distribution)
 prompts.md

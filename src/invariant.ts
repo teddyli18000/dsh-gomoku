@@ -1,13 +1,13 @@
 /**
- * Package-owned invariant companion for `@deepseek-ai/dsh-gomoku`.
- * @module @deepseek-ai/dsh-gomoku/invariant
+ * Package-owned invariant companion for `@yejiming/dsh-gomoku`.
+ * @module @yejiming/dsh-gomoku/invariant
  */
 
 /* jscpd:ignore-start */
 import type { Context } from 'cordis'
 import type { InvariantInstaller } from '@deepseek-ai/dsh-invariants'
 
-const PACKAGE_NAME = '@deepseek-ai/dsh-gomoku'
+const PACKAGE_NAME = '@yejiming/dsh-gomoku'
 
 /** Cordis companion plugin name. */
 export const name = 'gomoku-invariant'
